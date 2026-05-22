@@ -1,0 +1,14 @@
+{
+  "name": "agent-skills-maker",
+  "version": "0.1.0",
+  "description": "Confluence-driven agent and skill generator for Claude Code teams.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "scrape": "node scripts/scrape-confluence.js",
+    "test": "node --test tests/"
+  },
+  "private": true
+}

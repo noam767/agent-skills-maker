@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-skills-maker/schemas/knowledge-summary.schema.json",
+  "title": "KnowledgeSummary",
+  "description": "Structured team-knowledge extraction produced by Claude from a ScrapedOutput. Consumed (conceptually) by meta-agent and skill-creator subagents when generating artefacts.",
+  "type": "object",
+  "required": ["teamPurpose", "tools", "servicesProvisioned", "historicalIncidents", "commonIssues", "bestPractices", "sources"],
+  "additionalProperties": false,
+  "properties": {
+    "teamPurpose": { "type": "string", "minLength": 1 },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "category", "usage", "sourcePageIds"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "category": { "type": "string", "enum": ["internal", "external", "infrastructure", "observability", "data", "other"] },
+          "usage": { "type": "string", "minLength": 1 },
+          "sourcePageIds": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]+$" }, "minItems": 1 }
+        }
+      }
+    },
+    "servicesProvisioned": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "consumers", "sourcePageIds"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "consumers": { "type": "array", "items": { "type": "string" } },
+          "slo": { "type": "string" },
+          "sourcePageIds": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]+$" }, "minItems": 1 }
+        }
+      }
+    },
+    "historicalIncidents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "summary", "lesson", "sourcePageIds"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "dateApprox": { "type": "string" },
+          "summary": { "type": "string", "minLength": 1 },
+          "lesson": { "type": "string", "minLength": 1 },
+          "sourcePageIds": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]+$" }, "minItems": 1 }
+        }
+      }
+    },
+    "commonIssues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "symptoms", "resolutionSteps", "sourcePageIds"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "symptoms": { "type": "string", "minLength": 1 },
+          "resolutionSteps": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "sourcePageIds": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]+$" }, "minItems": 1 }
+        }
+      }
+    },
+    "bestPractices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "statement", "sourcePageIds"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "statement": { "type": "string", "minLength": 1 },
+          "rationale": { "type": "string" },
+          "sourcePageIds": { "type": "array", "items": { "type": "string", "pattern": "^[0-9]+$" }, "minItems": 1 }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pageId", "title", "url"],
+        "additionalProperties": false,
+        "properties": {
+          "pageId": { "type": "string", "pattern": "^[0-9]+$" },
+          "title": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "format": "uri" }
+        }
+      },
+      "minItems": 1
+    }
+  }
+}

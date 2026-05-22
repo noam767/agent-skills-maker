@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-skills-maker/schemas/scraped-output.schema.json",
+  "title": "ScrapedOutput",
+  "description": "JSON document emitted on stdout by scripts/scrape-confluence.js.",
+  "type": "object",
+  "required": ["space", "scrapedAt", "maxDepth", "pageCount", "pages"],
+  "additionalProperties": false,
+  "properties": {
+    "space": {
+      "type": "object",
+      "required": ["key", "name", "baseUrl"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "type": "string", "pattern": "^[A-Z0-9~]{1,255}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "baseUrl": { "type": "string", "format": "uri" }
+      }
+    },
+    "scrapedAt": { "type": "string", "format": "date-time" },
+    "maxDepth": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "pageCount": { "type": "integer", "minimum": 0 },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "path", "depth", "labels", "url", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[0-9]+$" },
+          "title": { "type": "string", "minLength": 1 },
+          "path": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "minItems": 1
+          },
+          "depth": { "type": "integer", "minimum": 0 },
+          "labels": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "url": { "type": "string", "format": "uri" },
+          "text": { "type": "string" }
+        }
+      }
+    }
+  }
+}
