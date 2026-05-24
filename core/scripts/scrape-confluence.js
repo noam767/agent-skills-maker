@@ -18,10 +18,22 @@ const USAGE = `Usage: node scripts/scrape-confluence.js --space <KEY> [options]
 
 Options:
   --space <KEY>          Confluence space key. Overrides CONFLUENCE_SPACE_KEY.
-  --max-depth <N>        Max ancestor depth (default 3).
+  --max-depth <N>        Max ancestor depth (default: unbounded). Range 0-100.
   --label <name>         Only include pages with this label. Repeatable; AND semantics.
   --ancestor <pageId>    Only include descendants of this page.
+  --no-attachments       Skip attachment fetch + extraction (faster, no PDFs/images).
   --help                 Print this message and exit 0.
+
+Host tooling (optional, air-gapped: install via internal package mirror):
+  pdftotext              poppler-utils OR XPDF — enables PDF text extraction.
+  tesseract              tesseract-ocr — enables image OCR.
+  (When missing, attachments are still listed with metadata, but their
+   contents are not extracted into the page text. Text-format attachments
+   like .txt/.md/.csv/.json/.yaml are always decoded — no binary needed.)
+
+Deployment: on-prem Confluence Data Center / Server. PAT authentication
+works for both /rest/api/ and /download/ paths with the same token; mint
+yours at <CONFLUENCE_BASE_URL>/plugins/personalaccesstokens/usertokens.action.
 
 Required environment variables:
   CONFLUENCE_BASE_URL    Full prefix to your on-prem Confluence (no trailing slash).
@@ -35,7 +47,7 @@ Exit codes: 0 ok | 1 unexpected | 2 config | 3 auth | 4 not-found
 `;
 
 function parseArgs(argv) {
-  const opts = { labels: [], maxDepth: 3 };
+  const opts = { labels: [], maxDepth: Infinity, skipAttachments: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     switch (a) {
@@ -50,6 +62,8 @@ function parseArgs(argv) {
         opts.labels.push(argv[++i]); break;
       case '--ancestor':
         opts.ancestorId = argv[++i]; break;
+      case '--no-attachments':
+        opts.skipAttachments = true; break;
       default:
         throw new ConfluenceError('CONFIG', `unknown argument: ${a}`);
     }
@@ -97,9 +111,11 @@ async function main() {
     process.exit(2);
   }
 
-  if (!Number.isInteger(opts.maxDepth) || opts.maxDepth < 0 || opts.maxDepth > 10) {
-    process.stderr.write(`[scrape] ERROR: --max-depth must be an integer in [0, 10]; got ${opts.maxDepth}\n`);
-    process.exit(2);
+  if (opts.maxDepth !== Infinity) {
+    if (!Number.isInteger(opts.maxDepth) || opts.maxDepth < 0 || opts.maxDepth > 100) {
+      process.stderr.write(`[scrape] ERROR: --max-depth must be an integer in [0, 100] (or omitted for unbounded); got ${opts.maxDepth}\n`);
+      process.exit(2);
+    }
   }
 
   const startedAt = Date.now();
@@ -110,13 +126,14 @@ async function main() {
       labels: opts.labels,
       ancestorId: opts.ancestorId,
       baseUrl,
+      skipAttachments: opts.skipAttachments,
       onProgress: (msg) => process.stderr.write(`${msg}\n`),
     });
 
     const out = {
       space,
       scrapedAt: new Date().toISOString(),
-      maxDepth: opts.maxDepth,
+      maxDepth: opts.maxDepth === Infinity ? null : opts.maxDepth,
       pageCount: pages.length,
       pages,
     };

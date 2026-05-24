@@ -9,11 +9,12 @@ space".
 ## Inputs Claude must obtain
 
 1. **Space identifier** — a space key (`ENG`, `DEVOPS`) or a space URL
-   (`https://acme.atlassian.net/wiki/spaces/ENG/overview`). If only a URL is
+   (`https://confluence.acme.corp/spaces/ENG/overview`). If only a URL is
    given, Claude extracts the key from the path segment after `/spaces/`.
 2. **Confidence that credentials are configured** — Claude must verify
-   `CONFLUENCE_BASE_URL`, `CONFLUENCE_EMAIL`, `CONFLUENCE_API_TOKEN` exist
-   before launching the REST path. (Skipped when using MCP.)
+   `CONFLUENCE_BASE_URL`, `CONFLUENCE_PAT`, and (optionally)
+   `CONFLUENCE_AUTH_SCHEME` exist before launching the REST path. (Skipped
+   when using MCP.)
 
 ## Step-by-step flow
 

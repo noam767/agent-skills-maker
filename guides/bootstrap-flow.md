@@ -11,16 +11,11 @@ Claude is the orchestrator.
 
 ## Deployment context
 
-Target environment is **on-prem Confluence Data Center inside an air-gapped
-network**. No Atlassian Cloud. The scraper hits
-`<CONFLUENCE_BASE_URL>/rest/api/...` with an authentication scheme configured via `CONFLUENCE_AUTH_SCHEME`.
-
-**Auth Scheme Comparison:**
-
-| Scheme | Target Env | `CONFLUENCE_PAT` format | Header |
-| :--- | :--- | :--- | :--- |
-| `Bearer` | On-Prem DC | Raw PAT Token | `Bearer ...` |
-| `Basic` | Cloud / Legacy | `base64(user:pass)` | `Basic ...` |
+Target environment is **on-prem Confluence Data Center / Server inside an
+air-gapped network**. No Atlassian Cloud. The scraper hits
+`<CONFLUENCE_BASE_URL>/rest/api/...` and `<CONFLUENCE_BASE_URL>/download/...`
+using `Authorization: Bearer <PAT>` (PAT minted at
+`<CONFLUENCE_BASE_URL>/plugins/personalaccesstokens/usertokens.action`).
 
 TLS verification is disabled by design (research.md R11).
 

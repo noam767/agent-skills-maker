@@ -13,7 +13,7 @@ Identifies the target space being scraped.
 | Field | Type | Source | Notes |
 |-------|------|--------|-------|
 | `key` | string (uppercase, ≤255) | env `CONFLUENCE_SPACE_KEY` or CLI `--space` | Required. |
-| `baseUrl` | string (URL) | env `CONFLUENCE_BASE_URL` | Required. Must end with `.atlassian.net`. |
+| `baseUrl` | string (URL) | env `CONFLUENCE_BASE_URL` | Required. On-prem Confluence DC host (e.g. `https://confluence.acme.corp`), no trailing slash. |
 | `name` | string | API response `space.name` | Populated after scrape. |
 | `homepageId` | string (numeric) | API response `space.homepage.id` | Used as BFS root. |
 

@@ -50,12 +50,10 @@ CONFLUENCE_PAT=<paste-your-token>
 CONFLUENCE_AUTH_SCHEME=Bearer
 ```
 
-**Authentication Scheme Reference:**
-
-| Scheme | Target Env | `CONFLUENCE_PAT` format | Header |
-| :--- | :--- | :--- | :--- |
-| `Bearer` | On-Prem DC | Raw PAT Token | `Bearer ...` |
-| `Basic` | Cloud / Legacy | `base64(user:pass)` | `Basic ...` |
+`CONFLUENCE_AUTH_SCHEME=Bearer` (the default) sends `Authorization: Bearer
+<PAT>` — the standard format for on-prem Confluence DC Personal Access
+Tokens. Mint yours at
+`<CONFLUENCE_BASE_URL>/plugins/personalaccesstokens/usertokens.action`.
 
 Load into your shell:
 

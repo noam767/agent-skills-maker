@@ -81,8 +81,10 @@ The system MUST prefer the simplest solution that satisfies the stated use case:
 
 ## Confluence Integration Standards
 
-- Authentication: API token auth via `Authorization: Basic base64(email:token)` header.
-- Base URL pattern: `https://<domain>.atlassian.net/wiki/rest/api/`
+- Authentication: Personal Access Token via `Authorization: Bearer <PAT>` header.
+  PAT minted from `<CONFLUENCE_BASE_URL>/plugins/personalaccesstokens/usertokens.action`.
+- Base URL pattern: on-prem Confluence DC, e.g. `https://confluence.acme.corp/rest/api/`.
+  Atlassian Cloud is out of scope.
 - Required capabilities: space content listing, page body retrieval (storage or
   view format), label/ancestor traversal.
 - The Node.js helper (`scripts/confluence-scraper.js` or equivalent) MUST:

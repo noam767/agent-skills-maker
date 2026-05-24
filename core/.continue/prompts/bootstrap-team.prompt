@@ -1,0 +1,61 @@
+---
+name: bootstrap-team
+description: Scrape a team's Confluence space and generate Continue agents + prompts from it.
+---
+
+# /bootstrap-team — Confluence → Agents & Commands (Continue)
+
+You orchestrate the project's bootstrap flow. The user should only have to
+provide three things: how to reach Confluence (MCP server OR base URL +
+token), and the space key. Do not ask for anything else; every knob has a
+sensible default.
+
+Canonical contract:
+`specs/001-confluence-agent-builder/contracts/orchestration.md`.
+
+## What the user provides
+
+1. **A Confluence connection** — either a Confluence/Atlassian MCP server
+   configured in Continue, OR `CONFLUENCE_BASE_URL`, `CONFLUENCE_PAT`, and
+   `CONFLUENCE_AUTH_SCHEME` in `.env`.
+2. **The space identifier** — key, or a space URL whose `<KEY>` you extract
+   after `/spaces/`.
+
+Do not ask for max-depth, labels, ancestors, or any other knob.
+
+## Steps
+
+### 1. Detect data path
+If a Confluence/Atlassian MCP server is configured, use it. Otherwise REST.
+
+### 2. Interactive setup (REST path)
+If env vars are missing, ask the user for: base URL (e.g.
+`https://confluence.acme.corp`), Personal Access Token (mint at
+`<CONFLUENCE_BASE_URL>/plugins/personalaccesstokens/usertokens.action`),
+and auth scheme (`Bearer`, default for DC PATs). Have them append to `.env`
+(Continue does not write to the filesystem; the user runs the edit). Point
+them at `.env.example`.
+
+### 3. Scrape
+Ask the user to run from a terminal (Continue does not run shell commands):
+```bash
+node scripts/scrape-confluence.js --space <KEY>
+```
+and paste the JSON back. Non-zero exit → surface the stderr.
+
+### 4. Derive KnowledgeSummary
+Same fields as the canonical contract. Every non-source entry cites ≥1 page.
+Empty categories → `[]`.
+
+### 5. Pick candidates
+Agents = workflows. Prompts = procedures. Aim ≥3 meaningful artefacts.
+
+### 6. Generate
+Use the `meta-agent` role from `.continue/agents/meta-agent.md` for each
+agent candidate; outputs to `.continue/agents/<name>.md`. Use `skill-creator`
+for each prompt candidate; outputs to `.continue/prompts/<name>.prompt`
+plus a sibling `.continue/prompts/<name>/` for supporting `scripts/`,
+`reference/`, etc.
+
+### 7. Report
+Files written + paths, candidates skipped + reasons, pages skipped, overwrites.

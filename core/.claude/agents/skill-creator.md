@@ -31,10 +31,40 @@ When invoked, you must follow these steps:
    decides when Claude invokes the skill. Write in third person, lead with
    "Use this skill when...", and pack in concrete trigger keywords and use
    cases. Keep under 1024 chars.
-4. **Plan Progressive Disclosure:** Decide what belongs in `SKILL.md` (the core
-   overview, kept under 500 lines) versus separate supporting files. Give every
-   supporting file an intention-revealing name (`./aws-patterns.md`, not
-   `./helpers.md`).
+4. **Plan the bundle, not just the SKILL.md.** A skill is a *directory*, and
+   `SKILL.md` is only its entry point. Reach for additional files whenever the
+   procedure benefits from concrete artefacts the model can read or execute
+   on demand. The canonical bundle layout:
+
+   ```text
+   <skill-name>/
+     SKILL.md              # entry point — instructions + when to invoke
+     scripts/              # executable helpers (bash, node, python) the skill RUNS
+       validate-foo.sh
+       generate-bar.mjs
+     reference/            # long-form docs the skill READS only when needed
+       aws-patterns.md
+       error-codes.md
+     templates/            # files the skill copies or fills in (yaml, json, j2)
+       prometheus-rule.yaml.tmpl
+     fixtures/             # static example inputs / outputs for the skill to cite
+   ```
+
+   - Put procedural logic that benefits from being deterministic into
+     `scripts/` rather than asking the model to re-derive it each invocation.
+     Example: a `scripts/lint-frontmatter.mjs` that the skill shells out to.
+   - Put long reference material (API tables, error catalogues, design
+     rationale) into `reference/` so `SKILL.md` stays under ~500 lines and
+     the model only loads the detail it needs.
+   - Put parameterised artefacts (manifest stubs, PR templates) into
+     `templates/`.
+   - In `SKILL.md`, reference these by relative path (e.g.
+     `Run ./scripts/validate-foo.sh`, `See ./reference/aws-patterns.md for
+     edge cases`). Naming should reveal intent (`./aws-patterns.md`, not
+     `./helpers.md`).
+   - Decide what belongs where using progressive disclosure: the model
+     should be able to do the common path with `SKILL.md` alone and pull in
+     supporting files only for the long tail.
 5. **Construct the Instructions:** Write detailed, actionable instructions for
    the skill body. Start steps with verbs. Provide exact commands, paths, and
    syntax.
@@ -49,9 +79,12 @@ When invoked, you must follow these steps:
    project/team skills go in `.claude/skills/`. Default to project scope unless
    the user requests otherwise.
 10. **Assemble and Write:** Create the skill directory and write
-    `SKILL.md` (and any supporting files) to
-    `<location>/<generated-skill-name>/`. Adhere strictly to the Output Format
-    below.
+    `SKILL.md` plus every supporting file you planned in step 4
+    (`scripts/`, `reference/`, `templates/`, `fixtures/`) under
+    `<location>/<generated-skill-name>/`. Mark shell scripts executable
+    (`chmod +x scripts/*.sh`). Adhere strictly to the Output Format below for
+    `SKILL.md`; supporting files are free-form but must each have a clear
+    purpose.
 
 ## Output Format
 

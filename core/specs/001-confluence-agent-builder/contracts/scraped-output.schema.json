@@ -18,7 +18,12 @@
       }
     },
     "scrapedAt": { "type": "string", "format": "date-time" },
-    "maxDepth": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "maxDepth": {
+      "description": "Effective max ancestor depth applied. null = unbounded (the default).",
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 100
+    },
     "pageCount": { "type": "integer", "minimum": 0 },
     "pages": {
       "type": "array",
@@ -40,7 +45,29 @@
             "items": { "type": "string", "minLength": 1 }
           },
           "url": { "type": "string", "format": "uri" },
-          "text": { "type": "string" }
+          "text": { "type": "string" },
+          "attachments": {
+            "type": "array",
+            "description": "Attachments on this page. Empty when none or when --no-attachments was passed.",
+            "items": {
+              "type": "object",
+              "required": ["id", "title", "mediaType", "fileSize", "kind", "extractionStatus"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string", "pattern": "^[0-9]+$" },
+                "title": { "type": "string", "minLength": 1 },
+                "mediaType": { "type": "string" },
+                "fileSize": { "type": "integer", "minimum": 0 },
+                "downloadPath": { "type": "string" },
+                "kind": { "enum": ["pdf", "image", "text", "other"] },
+                "extractedText": { "type": ["string", "null"] },
+                "extractionStatus": {
+                  "description": "ok | pending | skipped:<reason> | failed:<reason>",
+                  "type": "string"
+                }
+              }
+            }
+          }
         }
       }
     }

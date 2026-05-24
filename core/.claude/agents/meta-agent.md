@@ -34,7 +34,6 @@ You must generate a single Markdown code block containing the complete agent def
 name: <generated-agent-name>
 description: <generated-action-oriented-description>
 tools: <inferred-tool-1>, <inferred-tool-2>
-model: haiku | sonnet | opus <default to sonnet unless otherwise specified>
 ---
 
 # Purpose

@@ -1,0 +1,61 @@
+---
+description: "Use this skill when a Redis Sentinel cluster on Penta is in a failover loop, split-brain, or the on-call engineer needs to walk a manual recovery. Covers ckquorum verification, the rare split-brain procedure, and pause-writes coordination with the app team."
+agent: build
+---
+# Debugging a Sentinel failover (team Penta)
+
+Walks the Redis Sentinel failover triage and (if necessary) the split-brain recovery for the Penta Redis HA topology (3 sentinels + 3 redis, quorum 2).
+
+## Instructions
+
+When this skill is invoked, follow these steps:
+
+1. **Identify the symptom**: failover loop, sustained +odown, OR two-masters-visible (split-brain).
+2. **Run the quorum check** — use the bundled script:
+   ```bash
+   ./scripts/check-quorum.sh <master-name>
+   ```
+   It connects to each sentinel and reports ckquorum + which sentinels responded. If <2 responded, this is a NETWORK partition; page network on-call before doing anything else.
+3. **For failover loop**: do NOT intervene. Let quorum decide. Increase `down-after-milliseconds` only if the loop persists >15 min.
+4. **For split-brain** (extremely rare): follow `./reference/split-brain-procedure.md` to the letter. Key beats:
+   - PAUSE WRITES at the app layer first.
+   - Pick the master with the higher `master_repl_offset` as authoritative.
+   - `SLAVEOF NO ONE` on the chosen master; `SLAVEOF <ip> <port>` on the loser.
+   - `SENTINEL RESET *` on all sentinels.
+   - Resume writes only after reconciling divergent keys via the app's idempotent reconciliation path.
+5. **Always file a postmortem** — even for short failover loops. Template at `./reference/postmortem-template.md`.
+
+## Examples
+
+```bash
+# Quick health snapshot during an incident:
+./scripts/check-quorum.sh sentinel-prod-main
+
+# If split-brain confirmed (two masters):
+cat ./reference/split-brain-procedure.md
+```
+
+## Best Practices
+
+- Operate fully offline — flag missing dependencies rather than fetching them.
+- Pause writes BEFORE any manual recovery. Data divergence after the fact is the most expensive form.
+- Never `SLAVEOF NO ONE` in a normal failover — Sentinel handles it.
+- The script in `./scripts/` is deterministic and idempotent; prefer it over re-deriving the redis-cli incantation each incident.
+
+## Bundle layout
+
+```
+debugging-sentinel-failover/
+  SKILL.md
+  scripts/
+    check-quorum.sh        # connects to all sentinels and reports quorum
+  reference/
+    split-brain-procedure.md
+    postmortem-template.md
+```
+
+## Grounding sources
+
+- *Redis Sentinel Operations* — Confluence space PENTA
+- *Sentinel Failover Playbook* — Confluence space PENTA
+- *Sentinel Split-brain Recovery* — Confluence space PENTA

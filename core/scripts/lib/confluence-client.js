@@ -115,6 +115,58 @@ export async function get(path, { query } = {}) {
   throw lastErr;
 }
 
+/**
+ * GET a binary resource (attachment download). Returns a Buffer.
+ * @param {string} path  Path relative to baseUrl (e.g. "/download/attachments/...").
+ * @returns {Promise<Buffer>}
+ */
+export async function getBinary(path) {
+  const { baseUrl, pat } = readConfig();
+  const url = new URL(baseUrl + path);
+
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `${process.env.CONFLUENCE_AUTH_SCHEME ?? 'Bearer'} ${pat}`,
+          'Accept': '*/*',
+        },
+        redirect: 'follow',
+      });
+    } catch (err) {
+      lastErr = new ConfluenceError('NETWORK', `network error fetching ${url.pathname}: ${err.message}`);
+      if (attempt < MAX_ATTEMPTS) { await delay(BASE_DELAY_MS * 2 ** (attempt - 1)); continue; }
+      throw lastErr;
+    }
+
+    if (res.ok) {
+      const ab = await res.arrayBuffer();
+      return Buffer.from(ab);
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      throw new ConfluenceError('AUTH', `HTTP ${res.status} from ${url.pathname} — check CONFLUENCE_PAT`, res.status);
+    }
+    if (res.status === 404) {
+      throw new ConfluenceError('NOT_FOUND', `HTTP 404 from ${url.pathname}`, 404);
+    }
+    if (res.status === 429 || res.status >= 500) {
+      lastErr = new ConfluenceError('TRANSIENT', `HTTP ${res.status} from ${url.pathname}`, res.status);
+      if (attempt < MAX_ATTEMPTS) {
+        const retryAfter = parseRetryAfter(res.headers.get('retry-after'));
+        await delay(retryAfter ?? BASE_DELAY_MS * 2 ** (attempt - 1));
+        continue;
+      }
+      throw lastErr;
+    }
+    throw new ConfluenceError('NETWORK', `unexpected HTTP ${res.status} from ${url.pathname}`, res.status);
+  }
+  throw lastErr;
+}
+
 // -----------------------------------------------------------------------------
 // TLS verification is disabled for this process. Justification: research.md R11.
 // Node's global `fetch` (undici) does not accept a per-request https.Agent,

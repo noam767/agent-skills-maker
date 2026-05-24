@@ -1,0 +1,62 @@
+---
+name: diagnosing-red-elasticsearch
+description: Use this skill when the ELK cluster is red, yellow with unassigned shards, or ILM is stuck — triggers include "ES is red", "unassigned shards", "Kibana down", "ILM stuck on rollover", "audit logs missing". Drives the Sentra ELK recovery sequence (allocation explain → reroute → ILM explain) and refuses unsafe shortcuts.
+---
+
+# Diagnosing a red Elasticsearch cluster (Sentra ELK)
+
+Walks through the Sentra-codified recovery for the ELK secondary log path (audit + analytics).
+
+## Instructions
+
+When this skill is invoked, follow these steps:
+
+1. **Confirm scope.** Is this the ELK stack (90d hot, 1y warm, daily indices) or some other ES cluster? This skill only applies to the Sentra ELK cluster.
+2. **Check cluster health:**
+   ```http
+   GET _cluster/health
+   ```
+   Note: status, unassigned shards count, initializing shards count.
+3. **If red or yellow with unassigned shards:**
+   ```http
+   GET _cluster/allocation/explain
+   ```
+   Read the `decisions` array; the first NO decision is the cause. Typical cases: data-node restart left shards unassigned, or disk watermark exceeded.
+4. **Trigger retry-failed reroute** (safe, idempotent):
+   ```http
+   POST _cluster/reroute?retry_failed=true
+   ```
+5. **If ILM is stuck:**
+   ```http
+   GET <index>/_ilm/explain
+   ```
+   Almost always the write alias is pointing at the wrong index. Repoint the alias; do not bypass ILM.
+6. **For mapping explosion** (services adding fields per request):
+   - Find the offending index: `GET _cat/indices?v&s=docs.count:desc`.
+   - Check field count: `GET <index>/_mapping | wc -l` (rough).
+   - Enforce `index.mapping.total_fields.limit: 2000` on the template; the offending service must be fixed at source, not the index settings raised.
+7. **Refuse:**
+   - Do not raise `total_fields.limit` to work around a mapping explosion — root-cause at source.
+   - Do not increase shard replicas without capacity review.
+   - Do not exec into data-node pods — API only.
+   - Do not enable the security plugin features; we use mTLS at the proxy layer.
+
+## Examples
+
+```http
+GET _cluster/health
+GET _cluster/allocation/explain
+POST _cluster/reroute?retry_failed=true
+GET jaeger-span-2026-05-23/_ilm/explain
+```
+
+## Best Practices
+
+- ILM rotation runs nightly; if it fails at midnight UTC, Jaeger ingestion also stops (shared ES). Treat ILM stalls as latent observability incidents.
+- The `audit` use case has a 1y compliance hold — never delete indices to free space; expand or call platform.
+- After recovery, write a one-paragraph note in the incident channel even if the impact was small. Patterns repeat.
+
+## Grounding sources
+
+- *ELK — Log Aggregation Runbook* — https://kachlonistinvesting.atlassian.net/wiki/spaces/SENTRA/pages/2326551
+- *Jaeger — Distributed Tracing Runbook* (shared ES) — https://kachlonistinvesting.atlassian.net/wiki/spaces/SENTRA/pages/2260995

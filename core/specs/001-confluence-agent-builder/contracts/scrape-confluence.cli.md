@@ -42,7 +42,7 @@ no suffix, no log lines — only the JSON document. Suitable for piping into
 Human-readable progress lines, e.g.:
 
 ```text
-[scrape] space=ENG base=https://acme.atlassian.net maxDepth=3
+[scrape] space=ENG base=https://confluence.acme.corp maxDepth=unbounded
 [scrape] fetched page 1/47: Onboarding
 [scrape] fetched page 2/47: Runbooks
 ...

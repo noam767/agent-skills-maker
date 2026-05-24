@@ -5,19 +5,11 @@ skill suite from their on-prem Confluence Data Center space.
 
 ## Deployment context
 
-This project primarily targets **on-prem Confluence Data Center inside an air-gapped
-network**, but also supports **Atlassian Cloud** (via Basic Auth) for testing and compatibility. The scraper:
+This project targets **on-prem Confluence Data Center / Server inside an
+air-gapped network**. Atlassian Cloud is not supported. The scraper:
 
-- Talks to `<CONFLUENCE_BASE_URL>/rest/api/...` (Cloud requires the `/wiki` prefix).
-- Authenticates using a configurable scheme defined by `CONFLUENCE_AUTH_SCHEME`.
-
-**Authentication Scheme Reference:**
-
-| Scheme | Target Env | `CONFLUENCE_PAT` format | Header |
-| :--- | :--- | :--- | :--- |
-| `Bearer` | On-Prem DC | Raw PAT Token | `Bearer ...` |
-| `Basic` | Cloud / Legacy | `base64(user:pass)` | `Basic ...` |
-
+- Talks to `<CONFLUENCE_BASE_URL>/rest/api/...` and `<CONFLUENCE_BASE_URL>/download/...`.
+- Authenticates with a Personal Access Token sent as `Authorization: Bearer <token>`.
 - Disables TLS verification (closed network — see security note below).
 
 ## Prerequisites

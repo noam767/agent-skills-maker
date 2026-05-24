@@ -4,6 +4,13 @@
 
 import { get, ConfluenceError } from './confluence-client.js';
 import { normalize } from './content-normalizer.js';
+import {
+  fetchAttachments,
+  extractAttachmentText,
+  buildAttachmentsAppendix,
+  hasPdftotext,
+  hasTesseract,
+} from './attachment-fetcher.js';
 
 const PAGE_SIZE = 50;
 const EXPAND = 'body.storage,ancestors,metadata.labels';
@@ -25,16 +32,25 @@ const EXPAND = 'body.storage,ancestors,metadata.labels';
 export async function walkSpace(opts) {
   const {
     spaceKey,
-    maxDepth = 3,
+    maxDepth = Infinity,
     labels = [],
     ancestorId,
     baseUrl,
     onProgress = () => {},
+    skipAttachments = false,
   } = opts;
 
   // 1. Fetch space metadata (also serves as auth + existence check).
   const spaceMeta = await fetchSpace(spaceKey);
-  onProgress(`[scrape] space=${spaceKey} name="${spaceMeta.name}" maxDepth=${maxDepth}`);
+  const depthLabel = maxDepth === Infinity ? 'unbounded' : String(maxDepth);
+  onProgress(`[scrape] space=${spaceKey} name="${spaceMeta.name}" maxDepth=${depthLabel}`);
+  if (!skipAttachments) {
+    const pdf = hasPdftotext() ? 'available' : 'MISSING (PDFs → metadata only)';
+    const ocr = hasTesseract() ? 'available' : 'MISSING (images → metadata only)';
+    onProgress(`[scrape] host tooling: pdftotext=${pdf}; tesseract=${ocr}`);
+  } else {
+    onProgress(`[scrape] attachment fetch disabled (--no-attachments)`);
+  }
 
   // 2. Page through content.
   const accepted = [];
@@ -61,6 +77,26 @@ export async function walkSpace(opts) {
       if (ancestorId && !raw.ancestors?.some((a) => String(a.id) === String(ancestorId))) continue;
       if (labels.length > 0 && !labels.every((l) => page.labels.includes(l))) continue;
       if (!page.text) continue;
+
+      // Attachments: fetch + (best-effort) extract text. Errors per-attachment
+      // do not fail the page; errors per-page do not fail the scrape.
+      page.attachments = [];
+      if (!skipAttachments) {
+        try {
+          const attachments = await fetchAttachments(page.id);
+          for (const att of attachments) {
+            await extractAttachmentText(att, { onProgress });
+          }
+          page.attachments = attachments;
+          if (attachments.length) {
+            page.text += buildAttachmentsAppendix(attachments);
+            const stats = summariseAttachments(attachments);
+            onProgress(`[scrape]   attachments on "${page.title}": ${stats}`);
+          }
+        } catch (err) {
+          onProgress(`[scrape]   WARN attachment fetch failed on "${page.title}": ${err.message}`);
+        }
+      }
 
       accepted.push(page);
     }
@@ -123,5 +159,15 @@ function toPage(raw, baseUrl) {
     labels,
     url,
     text,
+    attachments: [], // populated by walkSpace if enabled
   };
+}
+
+function summariseAttachments(items) {
+  const by = {};
+  for (const a of items) {
+    const key = `${a.kind}:${a.extractionStatus === 'ok' ? 'ok' : 'meta-only'}`;
+    by[key] = (by[key] || 0) + 1;
+  }
+  return Object.entries(by).map(([k, v]) => `${v} ${k}`).join(', ');
 }

@@ -1,0 +1,52 @@
+# Investigating 5xx Spike
+
+# Investigating a 5xx spike (team Sentra)
+
+Walks an engineer through Sentra's standard 5xx triage flow. Optimized for the common case (recent deploy regressed something) before deeper investigation.
+
+## Instructions
+
+When this skill is invoked, follow these steps:
+
+1. **Bound the window.** Get the service name and the rough time window (start ts, end ts). If unknown, ask.
+2. **Run the standard Splunk search** in the `app_prod` index — never use `index=*`:
+   ```spl
+   index=app_prod service=<svc> status>=500 earliest=-30m | timechart span=1m count by status
+   ```
+   Then drill into `5xx burst` saved search for the same window.
+3. **Correlate with deploys.** Query ArgoCD app sync history for `<svc>` over the same window. If a sync completed within ~10 minutes before the spike, the deploy is the likely cause.
+4. **Recommend rollback BEFORE deep diving** if a recent sync correlates. Exact command:
+   ```bash
+   argocd app rollback <svc> <revision>
+   ```
+   This is the team-codified shortcut — confirmed faster than fix-forward on average.
+5. **If no recent deploy correlates,** jump to the Grafana RED panel for the service and pull the exemplar trace from Jaeger. Filter spans by `service.name` and `http.route`. Never filter Jaeger by request id (cardinality kills the query).
+6. **Capture artefacts for the incident channel:** the Splunk search permalink, Grafana dashboard URL, and (if applicable) the Jaeger trace ID. Paste them into `#sentra-alerts`.
+7. **Anti-patterns to refuse:**
+   - No `kubectl edit` to patch a config map fix in place — roll back, fix in git, re-sync.
+   - No unbounded `index=*` search — locks the indexer cluster.
+
+## Examples
+
+**Search to start with:**
+```spl
+index=app_prod service=orders status>=500 earliest=-30m latest=now
+| timechart span=1m count by status
+```
+
+**Handoff template:**
+> 5xx spike on `orders`, started ~14:22 UTC. 500-rate hit ~6%. Last ArgoCD sync was 14:14 UTC (rev abc123). Rolling back to prev rev def456 via `argocd app rollback orders def456`. Splunk: <permalink>. Grafana: Sentra / SLO / orders.
+
+## Best Practices
+
+- Always paste the Splunk permalink — not a screenshot — so on-call can re-pivot the search.
+- A correlated deploy is the most common root cause. Don't get fancy before you've checked.
+- Cite the Confluence runbook in the handoff so newer on-call hires can self-learn the flow.
+- The `5xx burst` and `OOMKilled pods` saved searches are pre-built; reach for them by name.
+
+## Grounding sources
+
+- *Splunk — Log Search & Alerting Runbook* — https://kachlonistinvesting.atlassian.net/wiki/spaces/SENTRA/pages/2228225
+- *Grafana — Dashboard Standards* — https://kachlonistinvesting.atlassian.net/wiki/spaces/SENTRA/pages/2261011
+- *Jaeger — Distributed Tracing Runbook* — https://kachlonistinvesting.atlassian.net/wiki/spaces/SENTRA/pages/2260995
+- *Kubernetes — Cluster Standards & Triage* — https://kachlonistinvesting.atlassian.net/wiki/spaces/SENTRA/pages/2261029
